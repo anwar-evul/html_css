@@ -1,0 +1,131 @@
+import pandas as pd
+import numpy as np
+from datetime import date, timedelta
+import sys
+import os
+def fung_index(df):
+    df = df.reset_index()
+    df = df.drop(["index"], axis=1)
+    df = df.reset_index()
+    return df
+today = date.today() 
+
+yesterday = today - timedelta(1)
+date_html = yesterday.strftime('%b %Y')
+Holidays = pd.read_excel(r"\\10.232.27.11\cctr$\Report\Scripts\Holidays.xlsx", dtype=object)
+dt_report = today + pd.tseries.offsets.CustomBusinessDay(-1,holidays=Holidays['StringHoliday'])
+dt_report = dt_report.date()
+
+PreviousMonth1 = yesterday.replace(month=1)
+def get_quarter(input_date):
+    """
+    Calculates the quarter of the year for a given date.
+    Returns an integer (1, 2, 3, or 4).
+    """
+    return (input_date.month - 1) // 3 + 1
+q_yesterday = get_quarter(yesterday)
+q_base = q_yesterday - 1
+q_base = f"{yesterday.strftime('%Y')}" + f"Q{q_base}"
+
+export_folder = r'\\10.232.27.11\cctr$\Report\05. Result\Chat_disconnected_blank\\'
+expoert_sharepoint = r'C:\Users\cctrmis\DBS Bank Ltd\IDCCTR - Transformation Team (Archive) - 00. Service Improvement\MIS Report\TM_OM_ALL\CHAT\\'
+# expoert_sharepoint = r'C:\Users\saifula\Documents\Result\\'
+#%%
+start_date = PreviousMonth1
+end_date = yesterday
+date_range = pd.date_range(start=start_date, end=end_date)
+month_range = pd.period_range(start=start_date, end=end_date, freq='M')
+path_call_detail = r'\\10.232.27.11\cctr$\Report\00. Data Source\03_IVR\Chat Interaction Report'
+
+chat_i = pd.DataFrame()
+for period in month_range:
+    file_name = f"{period.strftime('%Y%m')}.pkl"
+    file_path = os.path.join(path_call_detail, file_name)
+    print(file_path)
+    if os.path.exists(file_path):
+        data = pd.read_pickle(file_path, compression='zip')  
+        data['Session ID'] = data['Session ID'].ffill()
+        data['Chat End Reason'] = data['Chat End Reason'].ffill()
+        chat_i = pd.concat([data,chat_i], ignore_index=True)
+
+
+chat_int = chat_i.loc[chat_i['Chat End Reason'].notna()] 
+chat_int['session_flag'] = chat_int['Session ID'].str[:25]
+chat_sing = chat_int.loc[chat_int['Agent ID'].notna()] 
+chat_sing = fung_index(chat_sing)
+
+chat_only = chat_int.loc[chat_int['Agent ID'].isna()] 
+# takeout_list = 'You are now chatting with'
+# chat_only = chat_only[~chat_only['Start Date Time (HH:MM:SS)'].str.contains(takeout_list, case=False, na=False)]
+chat_only = chat_only[~chat_only['Group ID'].str.contains('Group ID', case=False, na=False)]
+hasil = chat_only.groupby(['Group ID','Session ID'])['End Date Time (HH:MM:SS)'].nunique()
+# hasil di left join
+chat_only = chat_only.merge(hasil, on=['Group ID','Session ID'], how='left')
+
+fix_chat = pd.merge(chat_sing,chat_only[['Session ID','Group ID','End Date Time (HH:MM:SS)_y']], on=['Session ID','Group ID'], how='left')
+fix_chat = fix_chat.drop_duplicates(subset = ['index'], keep = "last")
+
+fix_chat = fix_chat.rename(columns={"End Date Time (HH:MM:SS)_y":"Flag_unique"})
+
+condlist = [(fix_chat['Flag_unique'].isin([1,0])),
+            (fix_chat['Flag_unique'] > 1),
+            (fix_chat['Flag_unique'].isna())]
+choice = ["BLANK_CHAT_CUSTOMER","Any Chat Customer","BLANK_CHAT_CUSTOMER"]
+fix_chat['Chat_End_Reason'] = None
+fix_chat['Chat_End_Reason'] =np.select(condlist,choice,fix_chat['Chat_End_Reason'])
+
+kolomtoconvert = ['Start Date Time (HH:MM:SS)','End Date Time (HH:MM:SS)','Last Sent Nice Time']
+fix_chat[kolomtoconvert] = fix_chat[kolomtoconvert].apply(pd.to_datetime, format="%Y-%m-%d %H:%M:%S")
+fix_chat['DATE'] = fix_chat['Start Date Time (HH:MM:SS)'].dt.date
+fix_chat['Month'] = fix_chat['DATE'].apply(lambda x: x.strftime('%Y%m'))
+fix_chat['quarter'] = pd.PeriodIndex(fix_chat['DATE'], freq='Q')
+# extract hour
+fix_chat['hour'] = fix_chat['Start Date Time (HH:MM:SS)'].dt.hour
+fix_chat['Half_Day_Flag'] = np.where(fix_chat['hour'] < 12, 'firsthalf', 'secondhalf')
+fix_chat['Chat_End_Reason'] = np.where(fix_chat['Chat_End_Reason']=='Any Chat Customer', fix_chat['Chat End Reason'],fix_chat['Chat_End_Reason'])
+disc_chat = fix_chat.loc[fix_chat['Chat_End_Reason'].isin(['TIMEOUT_END_SESSION','KAI_END_SESSION','BLANK_CHAT_CUSTOMER'])]
+fix_chat['Using_percentile'] = '90%'
+
+#%%
+pivot_table = fix_chat.pivot_table(index=['Chat_End_Reason'], columns='Month', values='index', aggfunc='count', fill_value=0)
+# Calculate column-wise percentages
+pivot_table_col_pct = pivot_table.div(pivot_table.sum(axis=0), axis=1) * 100
+pvt_quarter = (fix_chat.loc[fix_chat['quarter']==q_base]).pivot_table(index=['DATE'], columns=['Chat_End_Reason'], values='index', aggfunc='count', fill_value=0)
+
+pvt_quarter_col_pct = pvt_quarter.div(pvt_quarter.sum(axis=1), axis=0) * 100
+custom_percentiles = [.90]
+##
+described_df = pvt_quarter_col_pct[['TIMEOUT_END_SESSION','KAI_END_SESSION','BLANK_CHAT_CUSTOMER']].describe(percentiles=custom_percentiles).query("index == '90%'").reset_index(drop=True)
+# described_df = described_df.melt(value_name='Threshold')
+
+#untuk report berjalan
+day_df = fix_chat.loc[fix_chat['Month']==f"{yesterday.strftime('%Y%m')}"]
+day_df = day_df.pivot_table(index=['DATE'], columns='Chat_End_Reason', values='index', aggfunc='count', fill_value=0)
+
+pvt_day_col_pct = day_df[['TIMEOUT_END_SESSION','KAI_END_SESSION','BLANK_CHAT_CUSTOMER']].div(day_df.sum(axis=1), axis=0) * 100
+
+pvt_day_col_pct['THRESHOLD_TIMEOUT_END_SESSION'] = described_df['TIMEOUT_END_SESSION'].iloc[0]
+pvt_day_col_pct['THRESHOLD_KAI_END_SESSION'] = described_df['KAI_END_SESSION'].iloc[0]
+pvt_day_col_pct['THRESHOLD_BLANK_CHAT'] = described_df['BLANK_CHAT_CUSTOMER'].iloc[0]
+
+pvt_day_col_pct['STATUS_TIMEOUT'] = np.where(pvt_day_col_pct['TIMEOUT_END_SESSION'] >= pvt_day_col_pct['THRESHOLD_TIMEOUT_END_SESSION'], 'Red','Green')
+pvt_day_col_pct['STATUS_KAI'] = np.where(pvt_day_col_pct['KAI_END_SESSION'] >= pvt_day_col_pct['THRESHOLD_KAI_END_SESSION'], 'Red','Green')
+pvt_day_col_pct['STATUS_BLANK'] = np.where(pvt_day_col_pct['BLANK_CHAT_CUSTOMER'] >= pvt_day_col_pct['THRESHOLD_BLANK_CHAT'], 'Red','Green')
+pvt_day_col_pct =pvt_day_col_pct[['TIMEOUT_END_SESSION','THRESHOLD_TIMEOUT_END_SESSION','KAI_END_SESSION','THRESHOLD_KAI_END_SESSION','BLANK_CHAT_CUSTOMER','THRESHOLD_BLANK_CHAT','STATUS_TIMEOUT','STATUS_KAI','STATUS_BLANK']]
+pvt_day_col_pct = pvt_day_col_pct.reset_index()
+
+monitor_rpt_day = pvt_day_col_pct.loc[(pvt_day_col_pct['DATE'] >= dt_report) & (pvt_day_col_pct['DATE'] <= yesterday)]
+def monitor_report(monitor_rpt_day):
+    cols = ['TIMEOUT_END_SESSION',
+            'KAI_END_SESSION',
+            'BLANK_CHAT_CUSTOMER',
+        'THRESHOLD_TIMEOUT_END_SESSION',
+        'THRESHOLD_KAI_END_SESSION',
+        'THRESHOLD_BLANK_CHAT'
+    ]
+    monitor_rpt_day[cols] = monitor_rpt_day[cols].applymap(lambda x: f"{x:.2f}%")
+    monitor_rpt_day = monitor_rpt_day.T
+    monitor_rpt_day.columns = monitor_rpt_day.iloc[0]
+    monitor_rpt_day = monitor_rpt_day.iloc[1:]
+    return monitor_rpt_day
+monitor_rpt_day = monitor_report(monitor_rpt_day)
