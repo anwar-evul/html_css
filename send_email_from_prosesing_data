@@ -1,0 +1,41 @@
+
+import pandas as pd
+from datetime import date,timedelta,datetime
+import win32com.client as client
+outlook = client.Dispatch("Outlook.Application")
+
+to_day = date.today()
+yesterday = to_day - timedelta(1)
+date_str = yesterday.strftime('%d-%b-%Y')
+
+public_holiday = pd.read_excel(r"\\10.232.27.11\cctr$\Report\Scripts\Holidays.xlsx")
+public_holiday = public_holiday['StringHoliday'].tolist()
+
+hari = to_day.strftime("%A")
+if hari in ["Saturday", "Sunday"]:
+    print("weekend")
+    error
+elif to_day.strftime("%Y-%m-%d") in public_holiday:
+    print("holiday")
+    error
+else:
+    print("weekday")
+
+
+
+with open(r"\\10.232.27.11\cctr$\Report\Scripts\IA Earlywarning\Chat_disconect_and_blank\html_dashboard.html", "r", encoding="utf-8") as f:
+    bodyEmail = f.read()
+
+    
+#%%
+message = outlook.CreateItem(0)
+Subject_html = f'🔔 Daily Chat Disconnected – {date_str}'
+# MS OUTLOOK set up
+message.To = 'saifulanwar1192@gmail.com'
+message.CC = 'saifulanwar1192@gmail.com'
+# Create Email Attributes
+
+message.Subject = Subject_html
+message.HTMLBody = bodyEmail
+message.Display()
+# message.Send()
