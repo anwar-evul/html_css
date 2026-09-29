@@ -281,6 +281,23 @@ def generate_html_dashboard(monitor_rpt_day, select_monthyear, output_file=None)
             </tbody>
         </table>
     </div>
+
+    <div style="margin-top: 35px;">
+        <h2 style="font-size:22px; color:#263238;">Month-Year Performance</h2>
+        <div class="table-wrapper">
+            <table style="table-layout:auto; min-width:800px;">
+                <thead>
+                    <tr>
+                        <th>Chat_End_Reason</th>
+                        {month_header_html}
+                    </tr>
+                </thead>
+                <tbody>
+                    {month_rows_html}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <script>
