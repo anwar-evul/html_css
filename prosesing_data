@@ -212,62 +212,54 @@ def generate_html_dashboard(monitor_rpt_day, select_monthyear, output_file=None)
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat End Reason Monitoring</title>
-    <style>
-        * {{ box-sizing: border-box; }}
-        body {{
-            margin: 0;
-            padding: 40px;
-            font-family: Arial, Helvetica, sans-serif;
-            background-color: #f5f7fa;
-        }}
-        .container {{ max-width: 1200px; margin: auto; }}
-        .table-wrapper {{
-            overflow-x: auto;
-            background: white;
-            border-radius: 6px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-        }}
-        table {{ width: 100%; border-collapse: collapse; table-layout: fixed; }}
-        th, td {{
-            border: 1px solid #b7c0c8;
-            padding: 10px 15px;
-            font-size: 18px;
-            text-align: center;
-        }}
-        th {{
-            background-color: #0b8be9;
-            color: white;
-            font-weight: bold;
-            font-size: 19px;
-        }}
-        th:nth-child(1) {{ width: 40%; }}
-        th:nth-child(2) {{ width: 30%; }}
-        th:nth-child(3) {{ width: 15%; }}
-        th:nth-child(4) {{ width: 15%; }}
-        td:first-child {{
-            text-align: left;
-            padding-left: 25px;
-            font-weight: 500;
-        }}
-        tbody tr:hover {{ background-color: #f2f8fc; }}
-        .rag-green {{ background-color: #3d8b40; color: white; font-weight: 500; }}
-        .rag-yellow {{ background-color: #f4b400; color: white; font-weight: 500; }}
-        .rag-red {{ background-color: #d93025; color: white; font-weight: 500; }}
-
-        @media (max-width: 768px) {{
-            body {{ padding: 15px; }}
-            th, td {{ font-size: 14px; padding: 8px; }}
-            td:first-child {{ padding-left: 10px; }}
-        }}
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat Disconnected Indicator</title>
+<style>
+    body {{ margin:0; padding:30px; font-family:Arial,Helvetica,sans-serif; color:#333; background:#fff; }}
+    .container {{ max-width:1200px; margin:auto; }}
+    .title {{ text-align:center; font-size:24px; font-weight:bold; border-bottom:2px solid #555; padding-bottom:10px; margin-bottom:28px; }}
+    .section-title {{ margin:22px 0 10px; font-size:16px; font-weight:normal; }}
+    .table-wrapper {{ overflow-x:auto; }}
+    table {{ border-collapse:collapse; font-size:14px; }}
+    th,td {{ border:1px solid #777; padding:5px 10px; text-align:center; white-space:nowrap; }}
+    th {{ background:#0b8be9; color:#fff; font-weight:bold; }}
+    td:first-child {{ text-align:left; }}
+    .month-table {{ width:auto; }}
+    .daily-table {{ width:760px; max-width:100%; }}
+    .rag-green {{ background:#3d8b40; color:#fff; font-weight:bold; }}
+    .rag-yellow {{ background:#f4b400; color:#222; font-weight:bold; }}
+    .rag-red {{ background:#d93025; color:#fff; font-weight:bold; }}
+    .text-section {{ margin-top:30px; font-size:14px; line-height:1.45; }}
+    .text-section ul {{ margin-top:8px; }}
+    .footer {{ margin-top:28px; font-size:13px; font-style:italic; color:#555; }}
+</style>
 </head>
 <body>
 <div class="container">
+    <div class="title">CHAT DISCONNECTED INDICATOR</div>
+
+    <p><strong>DEAR ALL</strong></p>
+    <p>This is a summary of daily Chat Disconnected {pd.to_datetime(report_date).strftime('%Y')}.</p>
+
+    <div class="section-title">Performance Month To Month</div>
     <div class="table-wrapper">
-        <table>
+        <table class="month-table">
+            <thead>
+                <tr>
+                    <th>Chat_End_Reason</th>
+                    {month_header_html}
+                </tr>
+            </thead>
+            <tbody>
+                {month_rows_html}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section-title">Daily Performance</div>
+    <div class="table-wrapper">
+        <table class="daily-table">
             <thead>
                 <tr>
                     <th>Chat_End_Reason</th>
@@ -277,43 +269,40 @@ def generate_html_dashboard(monitor_rpt_day, select_monthyear, output_file=None)
                 </tr>
             </thead>
             <tbody>
-{table_rows}
+                {table_rows}
             </tbody>
         </table>
     </div>
 
-    <div style="margin-top: 35px;">
-        <h2 style="font-size:22px; color:#263238;">Month-Year Performance</h2>
-        <div class="table-wrapper">
-            <table style="table-layout:auto; min-width:800px;">
-                <thead>
-                    <tr>
-                        <th>Chat_End_Reason</th>
-                        {month_header_html}
-                    </tr>
-                </thead>
-                <tbody>
-                    {month_rows_html}
-                </tbody>
-            </table>
-        </div>
+    <div class="text-section">
+        <p><strong>Action:</strong></p>
+        <ul>
+            <li><strong>Red:</strong> Status KAI_END_SESSION escalation raised by the SE Team, represented by Chakra and Radika. Please confirm once escalation is completed.</li>
+            <li><strong>Amber:</strong> Keep Monitoring.</li>
+            <li><strong>Green:</strong> No action required, continue to monitor.</li>
+        </ul>
+
+        <p><strong>Note:</strong></p>
+        <ul>
+            <li><strong><em>TIMEOUT END SESSION</em></strong> Chat session ended automatically after 90 seconds of customer inactivity or due to connectivity issues.</li>
+            <li><strong><em>BLANK CHAT CUSTOMER</em></strong> No customer messages were recorded in the chat session, potentially due to connectivity issues.</li>
+            <li><strong><em>KAI END SESSION</em></strong> Chat session ended due to system or connectivity disruptions, such as network issues, incoming calls, or platform instability.</li>
+            <li>For TIMEOUT_END_SESSION and BLANK_CHAT_CUSTOMER, the review and action plan are currently in progress with the Regional team. Any escalation mechanism will be communicated once the review has been finalized.</li>
+            <li>The threshold baseline is updated quarterly based on the 90% percentile value. Any result exceeding the threshold will be classified as Red. Amber with 80%-90%, Green &lt; 80%.</li>
+            <li>Please refer to the attached SharePoint file for the detailed data related to KAI_END_SESSION and Blank Chat.</li>
+        </ul>
     </div>
+
+    <div class="footer">This email is generated automatically and does not need any reply.</div>
 </div>
 
 <script>
-    document.querySelectorAll('.rag-status').forEach(function(cell) {{
-        const status = cell.textContent.trim().toUpperCase();
-
-        cell.classList.remove('rag-green', 'rag-yellow', 'rag-red');
-
-        if (status === 'RED') {{
-            cell.classList.add('rag-red');
-        }} else if (status === 'YELLOW' || status === 'AMBER') {{
-            cell.classList.add('rag-yellow');
-        }} else if (status === 'GREEN') {{
-            cell.classList.add('rag-green');
-        }}
-    }});
+document.querySelectorAll('.rag-status').forEach(function(cell) {{
+    const status = cell.textContent.trim().toUpperCase();
+    if (status === 'RED') cell.classList.add('rag-red');
+    else if (status === 'YELLOW' || status === 'AMBER') cell.classList.add('rag-yellow');
+    else if (status === 'GREEN') cell.classList.add('rag-green');
+}});
 </script>
 </body>
 </html>
