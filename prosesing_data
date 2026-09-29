@@ -129,3 +129,164 @@ def monitor_report(monitor_rpt_day):
     monitor_rpt_day = monitor_rpt_day.iloc[1:]
     return monitor_rpt_day
 monitor_rpt_day = monitor_report(monitor_rpt_day)
+
+
+#%%
+# Generate html_dashboard dari hasil akhir monitor_rpt_day
+def generate_html_dashboard(monitor_rpt_day, output_file=None):
+    """
+    Membuat dashboard HTML dari monitor_rpt_day.
+    File akan disimpan sebagai 'html_dashboard' di folder yang sama
+    dengan script prosesing_data.
+    """
+    if monitor_rpt_day.empty:
+        print("monitor_rpt_day kosong. html_dashboard tidak dibuat.")
+        return
+
+    # monitor_rpt_day sudah di-transpose oleh monitor_report().
+    # Setiap kolom merepresentasikan satu tanggal report.
+    report_date = monitor_rpt_day.columns[-1]
+    report_date_text = pd.to_datetime(report_date).strftime('%d/%m/%Y')
+
+    def get_value(row_name):
+        if row_name not in monitor_rpt_day.index:
+            return "-"
+        return str(monitor_rpt_day.loc[row_name].iloc[-1])
+
+    rows = [
+        {
+            "reason": "TIMEOUT_END_SESSION",
+            "value": get_value("TIMEOUT_END_SESSION"),
+            "threshold": get_value("THRESHOLD_TIMEOUT_END_SESSION"),
+            "rag": get_value("STATUS_TIMEOUT")
+        },
+        {
+            "reason": "KAI_END_SESSION",
+            "value": get_value("KAI_END_SESSION"),
+            "threshold": get_value("THRESHOLD_KAI_END_SESSION"),
+            "rag": get_value("STATUS_KAI")
+        },
+        {
+            "reason": "BLANK_CHAT_CUSTOMER",
+            "value": get_value("BLANK_CHAT_CUSTOMER"),
+            "threshold": get_value("THRESHOLD_BLANK_CHAT"),
+            "rag": get_value("STATUS_BLANK")
+        }
+    ]
+
+    table_rows = ""
+    for row in rows:
+        rag = row["rag"].strip()
+        table_rows += f"""
+                <tr>
+                    <td>{row["reason"]}</td>
+                    <td>{row["value"]}</td>
+                    <td>{row["threshold"]}</td>
+                    <td class="rag-status">{rag}</td>
+                </tr>
+"""
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat End Reason Monitoring</title>
+    <style>
+        * {{ box-sizing: border-box; }}
+        body {{
+            margin: 0;
+            padding: 40px;
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #f5f7fa;
+        }}
+        .container {{ max-width: 1200px; margin: auto; }}
+        .table-wrapper {{
+            overflow-x: auto;
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }}
+        table {{ width: 100%; border-collapse: collapse; table-layout: fixed; }}
+        th, td {{
+            border: 1px solid #b7c0c8;
+            padding: 10px 15px;
+            font-size: 18px;
+            text-align: center;
+        }}
+        th {{
+            background-color: #0b8be9;
+            color: white;
+            font-weight: bold;
+            font-size: 19px;
+        }}
+        th:nth-child(1) {{ width: 40%; }}
+        th:nth-child(2) {{ width: 30%; }}
+        th:nth-child(3) {{ width: 15%; }}
+        th:nth-child(4) {{ width: 15%; }}
+        td:first-child {{
+            text-align: left;
+            padding-left: 25px;
+            font-weight: 500;
+        }}
+        tbody tr:hover {{ background-color: #f2f8fc; }}
+        .rag-green {{ background-color: #3d8b40; color: white; font-weight: 500; }}
+        .rag-yellow {{ background-color: #f4b400; color: white; font-weight: 500; }}
+        .rag-red {{ background-color: #d93025; color: white; font-weight: 500; }}
+
+        @media (max-width: 768px) {{
+            body {{ padding: 15px; }}
+            th, td {{ font-size: 14px; padding: 8px; }}
+            td:first-child {{ padding-left: 10px; }}
+        }}
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Chat_End_Reason</th>
+                    <th>{report_date_text}</th>
+                    <th>Threshold</th>
+                    <th>RAG</th>
+                </tr>
+            </thead>
+            <tbody>
+{table_rows}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('.rag-status').forEach(function(cell) {{
+        const status = cell.textContent.trim().toUpperCase();
+
+        cell.classList.remove('rag-green', 'rag-yellow', 'rag-red');
+
+        if (status === 'RED') {{
+            cell.classList.add('rag-red');
+        }} else if (status === 'YELLOW' || status === 'AMBER') {{
+            cell.classList.add('rag-yellow');
+        }} else if (status === 'GREEN') {{
+            cell.classList.add('rag-green');
+        }}
+    }});
+</script>
+</body>
+</html>
+"""
+
+    if output_file is None:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        output_file = os.path.join(script_dir, "html_dashboard")
+
+    with open(output_file, "w", encoding="utf-8") as file:
+        file.write(html)
+
+    print(f"html_dashboard berhasil dibuat: {output_file}")
+
+
+generate_html_dashboard(monitor_rpt_day)
