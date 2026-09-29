@@ -2,6 +2,7 @@
 import pandas as pd
 from datetime import date,timedelta,datetime
 import win32com.client as client
+from bs4 import BeautifulSoup
 outlook = client.Dispatch("Outlook.Application")
 
 to_day = date.today()
@@ -25,6 +26,34 @@ else:
 
 with open(r"\\10.232.27.11\cctr$\Report\Scripts\IA Earlywarning\Chat_disconect_and_blank\html_dashboard.html", "r", encoding="utf-8") as f:
     bodyEmail = f.read()
+
+# Outlook desktop tidak menjalankan JavaScript pada HTML email.
+# Konversi warna RAG menjadi inline CSS agar tetap tampil di Outlook.
+soup = BeautifulSoup(bodyEmail, "html.parser")
+
+rag_colors = {
+    "RED": ("#d93025", "#ffffff"),
+    "YELLOW": ("#f4b400", "#222222"),
+    "AMBER": ("#f4b400", "#222222"),
+    "GREEN": ("#3d8b40", "#ffffff")
+}
+
+for cell in soup.select(".rag-status"):
+    status = cell.get_text(strip=True).upper()
+
+    if status in rag_colors:
+        background_color, text_color = rag_colors[status]
+        existing_style = cell.get("style", "")
+        cell["style"] = (
+            existing_style
+            + f"background-color:{background_color} !important;"
+            + f"color:{text_color} !important;"
+            + "font-weight:bold;text-align:center;"
+        )
+        # bgcolor sebagai fallback untuk renderer Outlook/Word.
+        cell["bgcolor"] = background_color
+
+bodyEmail = str(soup)
 
     
 #%%
