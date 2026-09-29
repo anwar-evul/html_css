@@ -82,7 +82,7 @@
             font-weight: 500;
         }
 
-        .rag-amber {
+        .rag-yellow {
             background-color: #f4b400;
             color: white;
             font-weight: 500;
@@ -136,21 +136,21 @@
                     <td>TIMEOUT_END_SESSION</td>
                     <td>44.14%</td>
                     <td>45.85%</td>
-                    <td class="rag-green">Green</td>
+                    <td class="rag-status">Green</td>
                 </tr>
 
                 <tr>
                     <td>KAI_END_SESSION</td>
                     <td>1.74%</td>
                     <td>4.02%</td>
-                    <td class="rag-green">Green</td>
+                    <td class="rag-status">Green</td>
                 </tr>
 
                 <tr>
                     <td>BLANK_CHAT_CUSTOMER</td>
                     <td>6.22%</td>
                     <td>7.69%</td>
-                    <td class="rag-green">Green</td>
+                    <td class="rag-status">Green</td>
                 </tr>
 
             </tbody>
@@ -160,6 +160,23 @@
     </div>
 
 </div>
+
+<script>
+    // Set warna RAG secara dinamis berdasarkan teks pada kolom RAG.
+    document.querySelectorAll('.rag-status').forEach(function (cell) {
+        const status = cell.textContent.trim().toUpperCase();
+
+        cell.classList.remove('rag-green', 'rag-yellow', 'rag-red');
+
+        if (status === 'RED') {
+            cell.classList.add('rag-red');
+        } else if (status === 'YELLOW') {
+            cell.classList.add('rag-yellow');
+        } else if (status === 'GREEN') {
+            cell.classList.add('rag-green');
+        }
+    });
+</script>
 
 </body>
 </html>
