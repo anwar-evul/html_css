@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat End Reason Monitoring</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 40px;
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #f5f7fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        th,
+        td {
+            border: 1px solid #b7c0c8;
+            padding: 10px 15px;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #0b8be9;
+            color: white;
+            font-weight: bold;
+            font-size: 19px;
+        }
+
+        th:nth-child(1) {
+            width: 40%;
+        }
+
+        th:nth-child(2) {
+            width: 30%;
+        }
+
+        th:nth-child(3) {
+            width: 15%;
+        }
+
+        th:nth-child(4) {
+            width: 15%;
+        }
+
+        td:first-child {
+            text-align: left;
+            padding-left: 25px;
+            font-weight: 500;
+        }
+
+        tbody tr:hover {
+            background-color: #f2f8fc;
+        }
+
+        .rag-green {
+            background-color: #3d8b40;
+            color: white;
+            font-weight: 500;
+        }
+
+        .rag-amber {
+            background-color: #f4b400;
+            color: white;
+            font-weight: 500;
+        }
+
+        .rag-red {
+            background-color: #d93025;
+            color: white;
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+
+            body {
+                padding: 15px;
+            }
+
+            th,
+            td {
+                font-size: 14px;
+                padding: 8px;
+            }
+
+            td:first-child {
+                padding-left: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="table-wrapper">
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Chat_End_Reason</th>
+                    <th>22/09/2026</th>
+                    <th>Threshold</th>
+                    <th>RAG</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                <tr>
+                    <td>TIMEOUT_END_SESSION</td>
+                    <td>44.14%</td>
+                    <td>45.85%</td>
+                    <td class="rag-green">Green</td>
+                </tr>
+
+                <tr>
+                    <td>KAI_END_SESSION</td>
+                    <td>1.74%</td>
+                    <td>4.02%</td>
+                    <td class="rag-green">Green</td>
+                </tr>
+
+                <tr>
+                    <td>BLANK_CHAT_CUSTOMER</td>
+                    <td>6.22%</td>
+                    <td>7.69%</td>
+                    <td class="rag-green">Green</td>
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+</body>
+</html>
