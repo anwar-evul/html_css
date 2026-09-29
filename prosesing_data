@@ -17,9 +17,13 @@ today = args.as_of or (date(2026, 9, 29) if args.demo else date.today())
 
 yesterday = today - timedelta(1)
 date_html = yesterday.strftime('%b %Y')
-Holidays = pd.read_excel(r"\\10.232.27.11\cctr$\Report\Scripts\Holidays.xlsx", dtype=object)
-dt_report = today + pd.tseries.offsets.CustomBusinessDay(-1,holidays=Holidays['StringHoliday'])
-dt_report = dt_report.date()
+if args.demo:
+    dt_report = yesterday
+else:
+    Holidays = pd.read_excel(r"\\10.232.27.11\cctr$\Report\Scripts\Holidays.xlsx", dtype=object)
+    dt_report = (today + pd.tseries.offsets.CustomBusinessDay(
+        -1, holidays=Holidays['StringHoliday']
+    )).date()
 
 PreviousMonth1 = yesterday.replace(month=1)
 def get_quarter(input_date):
