@@ -27,9 +27,6 @@ q_yesterday = get_quarter(yesterday)
 q_base = q_yesterday - 1
 q_base = f"{yesterday.strftime('%Y')}" + f"Q{q_base}"
 
-export_folder = r'\\10.232.27.11\cctr$\Report\05. Result\Chat_disconnected_blank\\'
-expoert_sharepoint = r'C:\Users\cctrmis\DBS Bank Ltd\IDCCTR - Transformation Team (Archive) - 00. Service Improvement\MIS Report\TM_OM_ALL\CHAT\\'
-# expoert_sharepoint = r'C:\Users\saifula\Documents\Result\\'
 #%%
 start_date = PreviousMonth1
 end_date = yesterday
