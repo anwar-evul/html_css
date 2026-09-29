@@ -136,7 +136,7 @@ monitor_rpt_day = monitor_report(monitor_rpt_day)
 
 #%%
 # Generate html_dashboard dari hasil akhir monitor_rpt_day
-def generate_html_dashboard(monitor_rpt_day, output_file=None):
+def generate_html_dashboard(monitor_rpt_day, select_monthyear, output_file=None):
     """
     Membuat dashboard HTML dari monitor_rpt_day.
     File akan disimpan sebagai 'html_dashboard' di folder yang sama
@@ -188,6 +188,26 @@ def generate_html_dashboard(monitor_rpt_day, output_file=None):
                     <td class="rag-status">{rag}</td>
                 </tr>
 """
+
+    month_df = select_monthyear.copy()
+    month_columns = [col for col in month_df.columns if col != "Chat_End_Reason"]
+    month_header_html = ""
+    for col in month_columns:
+        try:
+            month_label = pd.to_datetime(str(col), format="%Y%m").strftime("%b %Y")
+        except Exception:
+            month_label = str(col)
+        month_header_html += f"<th>{month_label}</th>"
+
+    month_rows_html = ""
+    for _, month_row in month_df.iterrows():
+        month_rows_html += "<tr>"
+        month_rows_html += f'<td>{month_row["Chat_End_Reason"]}</td>'
+        for col in month_columns:
+            value = month_row[col]
+            value_text = "-" if pd.isna(value) else f"{float(value):.2f}%"
+            month_rows_html += f"<td>{value_text}</td>"
+        month_rows_html += "</tr>"
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -292,4 +312,4 @@ def generate_html_dashboard(monitor_rpt_day, output_file=None):
     print(f"html_dashboard berhasil dibuat: {output_file}")
 
 
-generate_html_dashboard(monitor_rpt_day)
+generate_html_dashboard(monitor_rpt_day, select_monthyear)
