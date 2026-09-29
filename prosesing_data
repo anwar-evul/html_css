@@ -90,6 +90,9 @@ fix_chat['Using_percentile'] = '90%'
 pivot_table = fix_chat.pivot_table(index=['Chat_End_Reason'], columns='Month', values='index', aggfunc='count', fill_value=0)
 # Calculate column-wise percentages
 pivot_table_col_pct = pivot_table.div(pivot_table.sum(axis=0), axis=1) * 100
+select_monthyear = pivot_table_col_pct.reset_index()
+select_monthyear = select_monthyear.loc[select_monthyear["Chat_End_Reason"].isin(['TIMEOUT_END_SESSION','KAI_END_SESSION','BLANK_CHAT_CUSTOMER'])]
+
 pvt_quarter = (fix_chat.loc[fix_chat['quarter']==q_base]).pivot_table(index=['DATE'], columns=['Chat_End_Reason'], values='index', aggfunc='count', fill_value=0)
 
 pvt_quarter_col_pct = pvt_quarter.div(pvt_quarter.sum(axis=1), axis=0) * 100
