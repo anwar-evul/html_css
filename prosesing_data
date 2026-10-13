@@ -152,7 +152,7 @@ monitor_rpt_day = monitor_report(monitor_rpt_day)
 
 #%%
 # Generate html_dashboard dari hasil akhir monitor_rpt_day
-def generate_html_dashboard(monitor_rpt_day, select_monthyear, output_file=None):
+def generate_html_dashboard(monitor_rpt_day, select_monthyear, chtblank_tr, output_file=None):
     """
     Membuat dashboard HTML dari monitor_rpt_day.
     File akan disimpan sebagai 'html_dashboard' di folder yang sama
@@ -225,6 +225,20 @@ def generate_html_dashboard(monitor_rpt_day, select_monthyear, output_file=None)
             month_rows_html += f"<td>{value_text}</td>"
         month_rows_html += "</tr>"
 
+    # Breakdown BLANK_CHAT_CUSTOMER: rows = original Chat End Reason, columns = dates.
+    blank_header_html = "".join(
+        f"<th>{pd.to_datetime(day).strftime('%d/%m/%Y')}</th>"
+        for day in chtblank_tr.columns
+    )
+    blank_rows_html = ""
+    for reason, values in chtblank_tr.iterrows():
+        blank_rows_html += "<tr><td>" + str(reason) + "</td>"
+        for value in values:
+            blank_rows_html += "<td>" + str(value) + "</td>"
+        blank_rows_html += "</tr>"
+    if chtblank_tr.empty:
+        blank_rows_html = '<tr><td colspan="2">No blank chat breakdown data available</td></tr>'
+
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -290,6 +304,14 @@ def generate_html_dashboard(monitor_rpt_day, select_monthyear, output_file=None)
         </table>
     </div>
 
+    <div class="section-title">Blank Chat Customer Breakdown</div>
+    <div class="table-wrapper">
+        <table class="month-table">
+            <thead><tr><th>Chat End Reason</th>{blank_header_html}</tr></thead>
+            <tbody>{blank_rows_html}</tbody>
+        </table>
+    </div>
+
     <div class="text-section">
         <p><strong>Action:</strong></p>
         <ul>
@@ -333,4 +355,4 @@ document.querySelectorAll('.rag-status').forEach(function(cell) {{
     print(f"html_dashboard berhasil dibuat: {output_file}")
     return html,table_rows
 
-html,table_rows = generate_html_dashboard(monitor_rpt_day, select_monthyear)
+html,table_rows = generate_html_dashboard(monitor_rpt_day, select_monthyear, chtblank_tr)
