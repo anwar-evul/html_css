@@ -128,10 +128,19 @@ brkdown_chtblank = df_chtblank.pivot_table(index=['DATE'], columns=['Chat End Re
 cols = brkdown_chtblank.columns
 brkdown_prs = brkdown_chtblank[cols].div(sumarry_cur_month, axis=0) * 100
 brkdown_prs[cols] = brkdown_prs[cols].applymap(lambda x: f"{x:.2f}%")
-brkdown_prs = brkdown_prs.loc[(brkdown_prs.index >= dt_report) & (brkdown_prs.index <= yesterday)]
+# Include every calendar day between the previous business day and yesterday,
+# including weekends and public holidays (e.g. 9, 10, 11).
+calendar_dates = pd.date_range(start=dt_report, end=yesterday, freq='D').date
+brkdown_prs = brkdown_prs.reindex(calendar_dates)
+brkdown_prs = brkdown_prs.fillna('-')
 chtblank_tr = brkdown_prs.T
-col = chtblank_tr.columns[0]
-chtblank_tr = chtblank_tr.sort_values(by=col, ascending=False)
+# Sort using numeric percentages; never access columns[0] when the table is empty.
+if not chtblank_tr.empty:
+    first_date = chtblank_tr.columns[0]
+    sort_values = pd.to_numeric(
+        chtblank_tr[first_date].astype(str).str.rstrip('%'), errors='coerce'
+    )
+    chtblank_tr = chtblank_tr.iloc[sort_values.fillna(-1).argsort()[::-1]]
 
 monitor_rpt_day = pvt_day_col_pct.loc[(pvt_day_col_pct['DATE'] >= dt_report) & (pvt_day_col_pct['DATE'] <= yesterday)]
 def monitor_report(monitor_rpt_day):
@@ -237,7 +246,7 @@ def generate_html_dashboard(monitor_rpt_day, select_monthyear, chtblank_tr, outp
             blank_rows_html += "<td>" + str(value) + "</td>"
         blank_rows_html += "</tr>"
     if chtblank_tr.empty:
-        blank_rows_html = '<tr><td colspan="2">No blank chat breakdown data available</td></tr>'
+        blank_rows_html = f'<tr><td colspan="{max(2, len(chtblank_tr.columns) + 1)}">No blank chat breakdown data available</td></tr>'
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
