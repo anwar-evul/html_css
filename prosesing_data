@@ -1,31 +1,29 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Sep 30 09:15:49 2026
+
+@author: saifula
+"""
+
 import pandas as pd
 import numpy as np
 from datetime import date, timedelta
-import argparse
-import sys
 import os
+from dateutil.relativedelta import relativedelta
 def fung_index(df):
     df = df.reset_index()
     df = df.drop(["index"], axis=1)
     df = df.reset_index()
     return df
-parser = argparse.ArgumentParser(description="Chat Disconnected Indicator")
-parser.add_argument("--demo", action="store_true", help="Gunakan datasource dummy dari repo")
-parser.add_argument("--as-of", type=date.fromisoformat, help="Tanggal proses (YYYY-MM-DD), terutama untuk demo")
-args = parser.parse_args()
-today = args.as_of or (date(2026, 9, 29) if args.demo else date.today())
+today = date.today() 
 
 yesterday = today - timedelta(1)
 date_html = yesterday.strftime('%b %Y')
-if args.demo:
-    dt_report = yesterday
-else:
-    Holidays = pd.read_excel(r"\\10.232.27.11\cctr$\Report\Scripts\Holidays.xlsx", dtype=object)
-    dt_report = (today + pd.tseries.offsets.CustomBusinessDay(
-        -1, holidays=Holidays['StringHoliday']
-    )).date()
+Holidays = pd.read_excel(r"\\10.232.27.11\cctr$\Report\Scripts\Holidays.xlsx", dtype=object)
+dt_report = today + pd.tseries.offsets.CustomBusinessDay(-1,holidays=Holidays['StringHoliday'])
+dt_report = dt_report.date()
 
-PreviousMonth1 = yesterday.replace(month=1)
+PreviousMonth1 = yesterday - relativedelta(months=12)
 def get_quarter(input_date):
     """
     Calculates the quarter of the year for a given date.
@@ -33,8 +31,8 @@ def get_quarter(input_date):
     """
     return (input_date.month - 1) // 3 + 1
 q_yesterday = get_quarter(yesterday)
-previous_quarter = pd.Period(yesterday, freq='Q') - 1
-q_base = str(previous_quarter)
+q_base = q_yesterday - 1
+q_base = f"{yesterday.strftime('%Y')}" + f"Q{q_base}"
 
 #%%
 start_date = PreviousMonth1
@@ -44,35 +42,24 @@ month_range = pd.period_range(start=start_date, end=end_date, freq='M')
 path_call_detail = r'\\10.232.27.11\cctr$\Report\00. Data Source\03_IVR\Chat Interaction Report'
 
 chat_i = pd.DataFrame()
-if args.demo:
-    demo_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chat_interaction_dummy.csv")
-    chat_i = pd.read_csv(demo_file, dtype=str)
-    chat_i['Session ID'] = chat_i['Session ID'].ffill()
-    chat_i['Chat End Reason'] = chat_i['Chat End Reason'].ffill()
-    print(f"Memakai datasource dummy: {demo_file} ({len(chat_i)} baris)")
-else:
-    for period in month_range:
-        file_name = f"{period.strftime('%Y%m')}.pkl"
-        file_path = os.path.join(path_call_detail, file_name)
-        print(file_path)
-        if os.path.exists(file_path):
-            data = pd.read_pickle(file_path, compression='zip')
-            data['Session ID'] = data['Session ID'].ffill()
-            data['Chat End Reason'] = data['Chat End Reason'].ffill()
-            chat_i = pd.concat([data, chat_i], ignore_index=True)
-
-if chat_i.empty:
-    raise ValueError("Datasource chat kosong. Periksa file input dan periode yang diproses.")
+for period in month_range:
+    file_name = f"{period.strftime('%Y%m')}.pkl"
+    file_path = os.path.join(path_call_detail, file_name)
+    print(file_path)
+    if os.path.exists(file_path):
+        data = pd.read_pickle(file_path, compression='zip')  
+        data['Session ID'] = data['Session ID'].ffill()
+        data['Chat End Reason'] = data['Chat End Reason'].ffill()
+        chat_i = pd.concat([data,chat_i], ignore_index=True)
 
 
-chat_int = chat_i.loc[chat_i['Chat End Reason'].notna()].copy() 
+chat_int = chat_i.loc[chat_i['Chat End Reason'].notna()] 
 chat_int['session_flag'] = chat_int['Session ID'].str[:25]
 chat_sing = chat_int.loc[chat_int['Agent ID'].notna()] 
 chat_sing = fung_index(chat_sing)
 
-chat_only = chat_int.loc[chat_int['Agent ID'].isna()].copy() 
-# takeout_list = 'You are now chatting with'
-# chat_only = chat_only[~chat_only['Start Date Time (HH:MM:SS)'].str.contains(takeout_list, case=False, na=False)]
+chat_only = chat_int.loc[chat_int['Agent ID'].isna()] 
+
 chat_only = chat_only[~chat_only['Group ID'].str.contains('Group ID', case=False, na=False)]
 hasil = chat_only.groupby(['Group ID','Session ID'])['End Date Time (HH:MM:SS)'].nunique()
 # hasil di left join
@@ -87,7 +74,8 @@ condlist = [(fix_chat['Flag_unique'].isin([1,0])),
             (fix_chat['Flag_unique'] > 1),
             (fix_chat['Flag_unique'].isna())]
 choice = ["BLANK_CHAT_CUSTOMER","Any Chat Customer","BLANK_CHAT_CUSTOMER"]
-fix_chat['Chat_End_Reason'] = np.select(condlist, choice, default='BLANK_CHAT_CUSTOMER')
+fix_chat['Chat_End_Reason'] = None
+fix_chat['Chat_End_Reason'] =np.select(condlist,choice,fix_chat['Chat_End_Reason'])
 
 kolomtoconvert = ['Start Date Time (HH:MM:SS)','End Date Time (HH:MM:SS)','Last Sent Nice Time']
 fix_chat[kolomtoconvert] = fix_chat[kolomtoconvert].apply(pd.to_datetime, format="%Y-%m-%d %H:%M:%S")
@@ -111,15 +99,16 @@ select_monthyear = select_monthyear.loc[select_monthyear["Chat_End_Reason"].isin
 pvt_quarter = (fix_chat.loc[fix_chat['quarter']==q_base]).pivot_table(index=['DATE'], columns=['Chat_End_Reason'], values='index', aggfunc='count', fill_value=0)
 
 pvt_quarter_col_pct = pvt_quarter.div(pvt_quarter.sum(axis=1), axis=0) * 100
-custom_percentiles = [.90]
+custom_percentiles = [.80,.90]
 ##
 described_df = pvt_quarter_col_pct[['TIMEOUT_END_SESSION','KAI_END_SESSION','BLANK_CHAT_CUSTOMER']].describe(percentiles=custom_percentiles).query("index == '90%'").reset_index(drop=True)
-# described_df = described_df.melt(value_name='Threshold')
+described_df80 = pvt_quarter_col_pct[['TIMEOUT_END_SESSION','KAI_END_SESSION','BLANK_CHAT_CUSTOMER']].describe(percentiles=custom_percentiles).query("index == '80%'").reset_index(drop=True)
+
 
 #untuk report berjalan
 day_df = fix_chat.loc[fix_chat['Month']==f"{yesterday.strftime('%Y%m')}"]
 day_df = day_df.pivot_table(index=['DATE'], columns='Chat_End_Reason', values='index', aggfunc='count', fill_value=0)
-
+sumarry_cur_month = day_df.sum(axis=1)
 pvt_day_col_pct = day_df[['TIMEOUT_END_SESSION','KAI_END_SESSION','BLANK_CHAT_CUSTOMER']].div(day_df.sum(axis=1), axis=0) * 100
 
 pvt_day_col_pct['THRESHOLD_TIMEOUT_END_SESSION'] = described_df['TIMEOUT_END_SESSION'].iloc[0]
@@ -132,13 +121,17 @@ pvt_day_col_pct['STATUS_BLANK'] = np.where(pvt_day_col_pct['BLANK_CHAT_CUSTOMER'
 pvt_day_col_pct =pvt_day_col_pct[['TIMEOUT_END_SESSION','THRESHOLD_TIMEOUT_END_SESSION','KAI_END_SESSION','THRESHOLD_KAI_END_SESSION','BLANK_CHAT_CUSTOMER','THRESHOLD_BLANK_CHAT','STATUS_TIMEOUT','STATUS_KAI','STATUS_BLANK']]
 pvt_day_col_pct = pvt_day_col_pct.reset_index()
 
-df_chtblank = fix_chat.loc[fix_chat["Month"] ==f"{yesterday.strftime("%Y%m")}"]
-df_chtblank = df_chtblank.loc[df_chtblank["Chat_End_Reason"]=="BLANK_CHAT_CUSTOMER"]
-brkdown_chtblank = df_chtblank.pivot_table(index=["DATE"], columns=["Chat End Reason"], values="index", aggfunc="count",fill_value=0)
+df_chtblank = fix_chat.loc[fix_chat['Month']==f"{yesterday.strftime('%Y%m')}"]
+df_chtblank = df_chtblank.loc[df_chtblank['Chat_End_Reason']=="BLANK_CHAT_CUSTOMER"]
+brkdown_chtblank = df_chtblank.pivot_table(index=['DATE'], columns=['Chat End Reason'], values='index', aggfunc='count', fill_value=0)
 
 cols = brkdown_chtblank.columns
-brkdown_prs = brkdown_chtblank[cols].div(sumarry_cur_month,axis=0) * 100
-
+brkdown_prs = brkdown_chtblank[cols].div(sumarry_cur_month, axis=0) * 100
+brkdown_prs[cols] = brkdown_prs[cols].applymap(lambda x: f"{x:.2f}%")
+brkdown_prs = brkdown_prs.loc[(brkdown_prs.index >= dt_report) & (brkdown_prs.index <= yesterday)]
+chtblank_tr = brkdown_prs.T
+col = chtblank_tr.columns[0]
+chtblank_tr = chtblank_tr.sort_values(by=col, ascending=False)
 
 monitor_rpt_day = pvt_day_col_pct.loc[(pvt_day_col_pct['DATE'] >= dt_report) & (pvt_day_col_pct['DATE'] <= yesterday)]
 def monitor_report(monitor_rpt_day):
@@ -149,8 +142,7 @@ def monitor_report(monitor_rpt_day):
         'THRESHOLD_KAI_END_SESSION',
         'THRESHOLD_BLANK_CHAT'
     ]
-    monitor_rpt_day = monitor_rpt_day.copy()
-    monitor_rpt_day[cols] = monitor_rpt_day[cols].map(lambda x: f"{x:.2f}%")
+    monitor_rpt_day[cols] = monitor_rpt_day[cols].applymap(lambda x: f"{x:.2f}%")
     monitor_rpt_day = monitor_rpt_day.T
     monitor_rpt_day.columns = monitor_rpt_day.iloc[0]
     monitor_rpt_day = monitor_rpt_day.iloc[1:]
@@ -301,24 +293,23 @@ def generate_html_dashboard(monitor_rpt_day, select_monthyear, output_file=None)
     <div class="text-section">
         <p><strong>Action:</strong></p>
         <ul>
-            <li><strong>Red:</strong> Status KAI_END_SESSION escalation raised by the SE Team, represented by Chakra and Radika. Please confirm once escalation is completed.</li>
+            <li><strong>Red:</strong></li> 
+            <ul><li>KAI_END_SESSION Escalation raised by the SE Team, Please confirm once escalation is completed.</li></ul>
+            <ul><li>If Blank Chat / Timeout End Session hits Red threshold, will need to be investigated by SE and Ops whether required to further escalate to Tech.</li></ul>
             <li><strong>Amber:</strong> Keep Monitoring.</li>
             <li><strong>Green:</strong> No action required, continue to monitor.</li>
         </ul>
 
         <p><strong>Note:</strong></p>
         <ul>
-            <li><strong><em>TIMEOUT END SESSION</em></strong> Chat session ended automatically after 90 seconds of customer inactivity or due to connectivity issues.</li>
-            <li><strong><em>BLANK CHAT CUSTOMER</em></strong> No customer messages were recorded in the chat session, potentially due to connectivity issues.</li>
-            <li><strong><em>KAI END SESSION</em></strong> Chat session ended due to system or connectivity disruptions, such as network issues, incoming calls, or platform instability.</li>
-            <li>For TIMEOUT_END_SESSION and BLANK_CHAT_CUSTOMER, the review and action plan are currently in progress with the Regional team. Any escalation mechanism will be communicated once the review has been finalized.</li>
-            <li>The threshold baseline is updated quarterly based on the 90% percentile value. Any result exceeding the threshold will be classified as Red. Amber with 80%-90%, Green &lt; 80%.</li>
+            <li><em>Timeout End Session:</em> Chat session ended automatically after 90 seconds of customer inactivity.</li>
+            <li><em>Blank Chat Customer:</em> No customer messages were recorded in the chat session.</li>
+            <li><em>KAI END Session:</em> Chat session ended due to system or connectivity disruptions, such as network issues, incoming calls, or platform instability.</li>
+            <li>Above three chat end reasons has potential from connectivity issues, as per latest Tech investigations.</li>
+            <li>The threshold baseline is updated quarterly based on the 90% percentile value. Any result exceeding the threshold will be classified as Red.  Amber With 80%-90% Green < 80%.</li>
             <li>Please refer to the attached SharePoint file for the detailed data related to KAI_END_SESSION and Blank Chat.</li>
         </ul>
     </div>
-
-    <div class="footer">This email is generated automatically and does not need any reply.</div>
-</div>
 
 <script>
 document.querySelectorAll('.rag-status').forEach(function(cell) {{
@@ -340,6 +331,6 @@ document.querySelectorAll('.rag-status').forEach(function(cell) {{
         file.write(html)
 
     print(f"html_dashboard berhasil dibuat: {output_file}")
+    return html,table_rows
 
-
-generate_html_dashboard(monitor_rpt_day, select_monthyear)
+html,table_rows = generate_html_dashboard(monitor_rpt_day, select_monthyear)
