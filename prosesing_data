@@ -142,7 +142,7 @@ if not chtblank_tr.empty:
     )
     chtblank_tr = chtblank_tr.iloc[sort_values.fillna(-1).argsort()[::-1]]
 
-monitor_rpt_day = pvt_day_col_pct.loc[(pvt_day_col_pct['DATE'] >= dt_report) & (pvt_day_col_pct['DATE'] <= yesterday)]
+monitor_rpt_day = pvt_day_col_pct.set_index('DATE').reindex(calendar_dates).reset_index().rename(columns={'index': 'DATE'})
 def monitor_report(monitor_rpt_day):
     cols = ['TIMEOUT_END_SESSION',
             'KAI_END_SESSION',
@@ -151,7 +151,9 @@ def monitor_report(monitor_rpt_day):
         'THRESHOLD_KAI_END_SESSION',
         'THRESHOLD_BLANK_CHAT'
     ]
-    monitor_rpt_day[cols] = monitor_rpt_day[cols].applymap(lambda x: f"{x:.2f}%")
+    monitor_rpt_day = monitor_rpt_day.copy()
+    monitor_rpt_day[cols] = monitor_rpt_day[cols].applymap(lambda x: "-" if pd.isna(x) else f"{x:.2f}%")
+    monitor_rpt_day = monitor_rpt_day.fillna("-")
     monitor_rpt_day = monitor_rpt_day.T
     monitor_rpt_day.columns = monitor_rpt_day.iloc[0]
     monitor_rpt_day = monitor_rpt_day.iloc[1:]
@@ -176,43 +178,30 @@ def generate_html_dashboard(monitor_rpt_day, select_monthyear, chtblank_tr, outp
     report_date = monitor_rpt_day.columns[-1]
     report_date_text = pd.to_datetime(report_date).strftime('%d/%m/%Y')
 
-    def get_value(row_name):
-        if row_name not in monitor_rpt_day.index:
-            return "-"
-        return str(monitor_rpt_day.loc[row_name].iloc[-1])
-
-    rows = [
-        {
-            "reason": "TIMEOUT_END_SESSION",
-            "value": get_value("TIMEOUT_END_SESSION"),
-            "threshold": get_value("THRESHOLD_TIMEOUT_END_SESSION"),
-            "rag": get_value("STATUS_TIMEOUT")
-        },
-        {
-            "reason": "KAI_END_SESSION",
-            "value": get_value("KAI_END_SESSION"),
-            "threshold": get_value("THRESHOLD_KAI_END_SESSION"),
-            "rag": get_value("STATUS_KAI")
-        },
-        {
-            "reason": "BLANK_CHAT_CUSTOMER",
-            "value": get_value("BLANK_CHAT_CUSTOMER"),
-            "threshold": get_value("THRESHOLD_BLANK_CHAT"),
-            "rag": get_value("STATUS_BLANK")
-        }
+    daily_header_html = "".join(
+        f"<th>{pd.to_datetime(day).strftime('%d/%m/%Y')}</th><th>Threshold</th><th>RAG</th>"
+        for day in monitor_rpt_day.columns
+    )
+    daily_fields = [
+        ("TIMEOUT_END_SESSION", "THRESHOLD_TIMEOUT_END_SESSION", "STATUS_TIMEOUT"),
+        ("KAI_END_SESSION", "THRESHOLD_KAI_END_SESSION", "STATUS_KAI"),
+        ("BLANK_CHAT_CUSTOMER", "THRESHOLD_BLANK_CHAT", "STATUS_BLANK"),
     ]
-
     table_rows = ""
-    for row in rows:
-        rag = row["rag"].strip()
-        table_rows += f"""
-                <tr>
-                    <td>{row["reason"]}</td>
-                    <td>{row["value"]}</td>
-                    <td>{row["threshold"]}</td>
-                    <td class="rag-status">{rag}</td>
-                </tr>
-"""
+    for reason, threshold, status in daily_fields:
+        table_rows += f"<tr><td>{reason}</td>"
+        for day in monitor_rpt_day.columns:
+            def get_value(field):
+                if field not in monitor_rpt_day.index:
+                    return "-"
+                value = monitor_rpt_day.at[field, day]
+                return "-" if pd.isna(value) else str(value)
+            table_rows += (
+                f"<td>{get_value(reason)}</td>"
+                f"<td>{get_value(threshold)}</td>"
+                f'<td class="rag-status">{get_value(status)}</td>'
+            )
+        table_rows += "</tr>"
 
     month_df = select_monthyear.copy()
     month_columns = [col for col in month_df.columns if col != "Chat_End_Reason"]
@@ -265,7 +254,7 @@ def generate_html_dashboard(monitor_rpt_day, select_monthyear, chtblank_tr, outp
     th {{ background:#0b8be9; color:#fff; font-weight:bold; }}
     td:first-child {{ text-align:left; }}
     .month-table {{ width:auto; }}
-    .daily-table {{ width:760px; max-width:100%; }}
+    .daily-table {{ width:auto; min-width:760px; }}
     .rag-green {{ background:#3d8b40; color:#fff; font-weight:bold; }}
     .rag-yellow {{ background:#f4b400; color:#222; font-weight:bold; }}
     .rag-red {{ background:#d93025; color:#fff; font-weight:bold; }}
@@ -302,9 +291,7 @@ def generate_html_dashboard(monitor_rpt_day, select_monthyear, chtblank_tr, outp
             <thead>
                 <tr>
                     <th>Chat_End_Reason</th>
-                    <th>{report_date_text}</th>
-                    <th>Threshold</th>
-                    <th>RAG</th>
+                    {daily_header_html}
                 </tr>
             </thead>
             <tbody>
