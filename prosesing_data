@@ -132,6 +132,14 @@ pvt_day_col_pct['STATUS_BLANK'] = np.where(pvt_day_col_pct['BLANK_CHAT_CUSTOMER'
 pvt_day_col_pct =pvt_day_col_pct[['TIMEOUT_END_SESSION','THRESHOLD_TIMEOUT_END_SESSION','KAI_END_SESSION','THRESHOLD_KAI_END_SESSION','BLANK_CHAT_CUSTOMER','THRESHOLD_BLANK_CHAT','STATUS_TIMEOUT','STATUS_KAI','STATUS_BLANK']]
 pvt_day_col_pct = pvt_day_col_pct.reset_index()
 
+df_chtblank = fix_chat.loc[fix_chat["Month"] ==f"{yesterday.strftime("%Y%m")}"]
+df_chtblank = df_chtblank.loc[df_chtblank["Chat_End_Reason"]=="BLANK_CHAT_CUSTOMER"]
+brkdown_chtblank = df_chtblank.pivot_table(index=["DATE"], columns=["Chat End Reason"], values="index", aggfunc="count",fill_value=0)
+
+cols = brkdown_chtblank.columns
+brkdown_prs = brkdown_chtblank[cols].div(sumarry_cur_month,axis=0) * 100
+
+
 monitor_rpt_day = pvt_day_col_pct.loc[(pvt_day_col_pct['DATE'] >= dt_report) & (pvt_day_col_pct['DATE'] <= yesterday)]
 def monitor_report(monitor_rpt_day):
     cols = ['TIMEOUT_END_SESSION',
