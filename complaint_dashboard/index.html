@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CBG Complaint Management Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="brand"><span class="brand-mark">✦</span><b>DBS</b></div>
+  <nav><button class="nav active" data-section="dashboard">▣ Dashboard</button><button class="nav" data-section="category">▦ Category</button><button class="nav" data-section="detail">▤ Detail Data</button></nav>
+</aside>
+<main>
+<header><div><h1>CBG Complaint Management Dashboard</h1><p>Customer Complaints • Executive Summary & Category Analysis</p></div><div class="asof">Data as of <b>29 Sep 2026</b> <span>(Live)</span></div></header>
+<section class="filters">
+<label>Month<select id="month"><option value="202609">202609 - Sep 2026</option><option value="202608">202608 - Aug 2026</option><option value="202607">202607 - Jul 2026</option></select></label>
+<label>Unit<select id="unit"><option>All</option><option>Collection Team</option><option>DBSI JFS</option><option>Sales Team</option></select></label>
+<label>Category<select id="cat"><option>All</option><option>Credit Card</option><option>Personal Loan</option><option>JFS</option><option>Banking</option><option>Digi</option></select></label>
+<label>Status<select id="status"><option>All</option><option>Open</option><option>Closed</option></select></label>
+<button id="reset">↻ Reset</button>
+</section>
+<section id="dashboard" class="page active">
+<div class="topgrid">
+<div class="panel"><h3>▥ Total Volume</h3><div class="metric-row">Open Cases <strong>41</strong></div><div class="metric-row">Resolved Cases <strong>160</strong></div><div class="metric-row">MTD Volume <strong>201</strong></div><div class="metric-row">YTD Volume <strong>716</strong></div></div>
+<div class="panel"><h3>◷ Open Complaint TAT Breakdown</h3><div class="metric-row">0 - 5 BD <strong>36 <i>88%</i></strong></div><div class="metric-row">6 - 10 BD <strong>2 <i>5%</i></strong></div><div class="metric-row">11 - 20 BD <strong>3 <i>7%</i></strong></div><div class="metric-row">Overdue <strong>0 <i>0%</i></strong></div></div>
+<div class="panel"><h3>● Complaint Resolution</h3><div class="metric-row">0 - 5 BD (target 85%) <strong>152 <i>95%</i></strong></div><div class="metric-row">6 - 10 BD <strong>8 <i>5%</i></strong></div><div class="metric-row">11 - 20 BD <strong>0 <i>0%</i></strong></div><div class="metric-row">Overdue <strong>0 <i>0%</i></strong></div></div>
+<div class="kpis"><div class="kpi blue">Open Cases<b>41</b></div><div class="kpi green">Valid Cases<b>4</b></div><div class="kpi red">Resolved Cases<b>160</b></div><div class="kpi gray">Not Valid Cases<b>156</b></div></div>
+</div>
+<div class="charts"><div class="panel"><h3>12 Month Trend</h3><canvas id="trendChart"></canvas></div><div class="panel"><h3>External Case</h3><canvas id="externalChart"></canvas></div></div>
+<div class="panel"><h3>Top 5 Complaint</h3><table><thead><tr><th>#</th><th>Case</th><th>Owner</th><th>Volume</th><th>Trend vs Last Month</th></tr></thead><tbody id="top5"></tbody></table></div>
+</section>
+<section id="category" class="page">
+<div class="categorygrid"><div class="panel"><h3>Category Analysis</h3><table><thead><tr><th>Case Category</th><th>202606</th><th>202607</th><th>202608</th><th>202609</th><th>MoM %</th></tr></thead><tbody id="categoryTable"></tbody></table></div>
+<div><div class="panel donut"><h3>Category Composition (Selected Month)</h3><canvas id="categoryChart"></canvas></div><div class="panel"><h3>Resolution by Product</h3><table><thead><tr><th>Case</th><th>0-5 BD</th><th>0-10 BD</th><th>0-20 BD</th></tr></thead><tbody id="resolution"></tbody></table></div></div></div>
+</section>
+<section id="detail" class="page"><div class="panel"><div class="panel-head"><h3>Complaint Detail Data</h3><input id="search" placeholder="Search case, unit, feedback..."><button id="export">⇩ Export CSV</button></div><div class="tablewrap"><table><thead><tr><th>TAG AGE</th><th>Status</th><th>Sub Area</th><th>Related Unit</th><th>Feedback Number</th><th>Month</th><th>TAT</th><th>CATEG</th></tr></thead><tbody id="detailTable"></tbody></table></div></div></section>
+<footer>Prototype dashboard • Data shown is sample data based on the supplied dashboard screenshots.</footer>
+</main><script type="module" src="app.js"></script>
+</body></html>
